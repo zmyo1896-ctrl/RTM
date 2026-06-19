@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTM Solar - Ultimate Design Studio Master</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML2Canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;600;700;900&family=Playfair+Display:wght@700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --font-family: 'Inter', 'Padauk', sans-serif;
+            --dynamic-color: #06b6d4; 
+            --bg-body: #020617;
+            --text-main: #ffffff;
+            --glass-bg: rgba(15, 23, 42, 0.7);
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-body); 
+            color: var(--text-main);
+            overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Light Mode */
+        body.light-mode {
+            --bg-body: #f8fafc;
+            --text-main: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+        }
+        .light-mode .default-bg { background-image: none; background-color: #f1f5f9; }
+        .light-mode .text-slate-300, .light-mode .text-slate-400 { color: #475569 !important; }
+        .light-mode .glass-panel { border-color: rgba(0,0,0,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+
+        /* Dynamic Classes */
+        .dyn-text { color: var(--dynamic-color) !important; }
+        .dyn-bg { background-color: var(--dynamic-color) !important; }
+        .dyn-border { border-color: var(--dynamic-color) !important; }
+
+        /* Default Background */
+        .default-bg { position: fixed; inset: 0; background-color: #020617; background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,0.1) 0, transparent 50%); z-index: -20; transition: all 0.3s ease; }
+
+        /* Cinematic Video Background (Unmuted removed from HTML, handled in JS) */
+        #bgVideo { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: -10; object-fit: cover; opacity: 0.6; display: none; transition: opacity 0.5s ease; }
+
+        /* Glass Panel */
+        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); }
+
+        /* 3D Tilt */
+        .tilt-card { transition: transform 0.1s ease-out, box-shadow 0.1s ease-out; transform-style: preserve-3d; }
+        .tilt-content { transform: translateZ(30px); }
+
+        /* Floating Animation */
+        .animate-float { animation: float 4s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px) translateZ(40px); } 50% { transform: translateY(-10px) translateZ(40px); } }
+
+        /* --- EFFECTS --- */
+        /* Scanline Effect */
+        .effect-scanline::after { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 50; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+        
+        /* Weather Overlays */
+        #weatherOverlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; border-radius: 1rem; }
+        .weather-rain { background: url('https://www.transparenttextures.com/patterns/rain.png'); animation: rainDrop 0.6s linear infinite; opacity: 0.7; }
+        @keyframes rainDrop { 0% { background-position: 0% 0%; } 100% { background-position: 20% 100%; } }
+        .weather-snow { background: url('https://www.transparenttextures.com/patterns/stardust.png'); animation: snowFall 15s linear infinite; opacity: 0.9; }
+        @keyframes snowFall { 0% { background-position: 0px 0px; } 100% { background-position: 500px 1000px; } }
+
+        /* Draggable Logo */
+        .draggable-logo { position: absolute; cursor: grab; z-index: 40; user-select: none; }
+        .draggable-logo:active { cursor: grabbing; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body id="mainBody">
+
+    <!-- Backgrounds -->
+    <div class="default-bg"></div>
+    <video id="bgVideo" autoplay loop playsinline></video>
+    
+    <!-- Audio Sources -->
+    <audio id="audioBGM" loop></audio>
+    <audio id="audioRain" loop src="https://cdn.pixabay.com/download/audio/2021/08/09/audio_8dd5771db5.mp3"></audio>
+    <audio id="audioSnow" loop src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_8e9f50f757.mp3"></audio>
+
+    <header class="border-b border-slate-700/50 py-4 px-4 relative z-10 glass-panel border-none rounded-b-3xl mb-4">
+        <div class="max-w-[1500px] mx-auto flex justify-between items-center px-4">
+            <h1 class="text-2xl font-black tracking-tight drop-shadow-lg">
+                DesignStudio <span class="dyn-text">MASTER</span>
+            </h1>
+            <button id="themeToggle" class="bg-white text-slate-900 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition">
+                ☀️ Light Mode
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-[1500px] w-full mx-auto p-2 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+        
+        <!-- ==================== LEFT PANEL: CONTROLS ==================== -->
+        <div class="lg:col-span-4 h-fit sticky top-4">
+            <div class="glass-panel p-5 rounded-3xl space-y-4 max-h-[88vh] overflow-y-auto">
+                
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="downloadDesign()" class="col-span-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 text-white font-bold py-3 rounded-xl shadow-lg transition transform hover:scale-[1.02] flex justify-center items-center gap-2">
+                        💾 ဓာတ်ပုံအဖြစ် Save မည်
+                    </button>
+                    <button onclick="generateAIText()" class="col-span-2 bg-slate-800 border border-purple-500/50 text-purple-400 font-bold py-2 rounded-xl text-sm hover:bg-slate-700 transition">
+                        ✨ AI ဖြင့် စာသားရေးမည်
+                    </button>
+                </div>
+
+                <hr class="border-slate-700/50">
+
+                <!-- PROMINENT LOGO UPLOAD SECTION -->
+                <div class="bg-blue-900/40 border border-blue-500/40 p-4 rounded-xl space-y-2">
+                    <h3 class="text-xs font-bold uppercase text-blue-300">🖼️ ကိုယ်ပိုင် Logo / ရုပ်ပုံ ထည့်ရန်</h3>
+                    <input type="file" id="logoUpload" accept="image/*" class="w-full text-xs text-slate-300 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-500 file:text-white file:font-bold hover:file:bg-blue-600 cursor-pointer">
+                    <p class="text-[10px] text-blue-200 mt-1">* ထည့်ထားသော Logo ကို Mouse ဖြင့် ဖိဆွဲပြီး ကြိုက်နှစ်သက်ရာ နေရာသို့ ရွှေ့နိုင်သည်။</p>
+                    <button onclick="clearLogo()" id="clearLogoBtn" class="hidden mt-2 w-full text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/40 transition font-bold">
+                        🗑️ Logo ပြန်ဖျက်မည်
+                    </button>
+                </div>
+
+                <!-- VIDEO UPLOAD & CINEMATIC SECTION -->
+                <div class="bg-pink-950/40 border border-pink-500/40 p-4 rounded-xl space-y-3">
+                    <h3 class="text-xs font-bold uppercase text-pink-300">🎬 Cinematic Video & Music</h3>
+                    
+                    <!-- Upload Custom Video -->
+                    <div class="bg-black/30 p-3 rounded-lg border border-pink-500/20">
+                        <label class="block text-[10px] font-bold uppercase mb-2 text-pink-200">နောက်ခံဗီဒီယို (အသံနှင့်အတူတီးခတ်မည်)</label>
+                        <input type="file" id="videoUpload" accept="video/*" class="w-full text-xs text-slate-400 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-pink-500/20 file:text-pink-300 cursor-pointer">
+                        <button onclick="clearVideo()" id="clearVideoBtn" class="hidden mt-2 w-full text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg hover:bg-red-500/40 transition">
+                            🗑️ ဗီဒီယို ပြန်ဖျက်မည်
+                        </button>
+                    </div>
+
+                    <!-- Volume Control for BGM / Video -->
+                    <div class="pt-2">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">🔊 အသံ အတိုးအကျယ် (Volume)</label>
+                        <input type="range" id="volumeControl" min="0" max="1" step="0.05" value="0.5" class="w-full accent-pink-500 cursor-pointer">
+                    </div>
+
+                    <!-- Weather Effects -->
+                    <p class="text-[10px] text-pink-300/70 mt-2">ရာသီဥတု Effect များကို ရွေးချယ်ပါ -</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setWeather('rain')" class="bg-blue-900/50 hover:bg-blue-800 text-[10px] py-2 rounded border border-blue-500/50 transition">🌧️ မိုးရွာ</button>
+                        <button onclick="setWeather('snow')" class="bg-slate-300/20 hover:bg-slate-300/40 text-[10px] py-2 rounded border border-white/50 transition">❄️ နှင်းကျ</button>
+                    </div>
+                    <button onclick="setWeather('none')" class="w-full mt-1 bg-slate-800 hover:bg-slate-700 text-[10px] py-2 rounded border border-slate-600 transition">❌ Effect များပိတ်မည်</button>
+                </div>
+
+                <!-- TEXT INPUTS -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">ဆိုင်အမည် / ခေါင်းစဉ် (Brand)</label>
+                        <input type="text" id="brandInput" value="RTM Solar" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">ကုန်ပစ္စည်းအမည် (Product)</label>
+                        <input type="text" id="productInput" value="Smart Solar Panels" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">ပရိုမိုးရှင်း (Discount)</label>
+                        <input type="text" id="discountInput" value="15%" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">ဖုန်းနံပါတ် (Contact)</label>
+                        <input type="text" id="phoneInput" value="Viber: 09-880931296" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+
+                    <div class="col-span-2"><hr class="border-slate-700/50 my-1"></div>
+
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">ဆိုရှယ်မီဒီယာ အရွယ်အစား</label>
+                        <select id="sizePicker" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+                            <option value="aspect-square">Square (1:1) - FB/IG Post</option>
+                            <option value="aspect-[9/16]">Story (9:16) - TikTok/Reels</option>
+                            <option value="aspect-video">Cover (16:9)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">အရောင်</label>
+                        <input type="color" id="colorPicker" value="#06b6d4" class="w-full h-10 bg-slate-900/70 border border-slate-600 rounded-lg cursor-pointer">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">စတိုင် (Design)</label>
+                        <select id="designPicker" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-2 py-2 text-sm text-white focus:outline-none">
+                            <option value="card1">01 / Cyber Vibe</option>
+                            <option value="card2">02 / Gold Luxury</option>
+                            <option value="card3">03 / Eco System</option>
+                        </select>
+                    </div>
+
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">ဖောင့်ဒီဇိုင်း (Fonts)</label>
+                        <select id="fontPicker" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+                            <option value="'Inter', 'Padauk', sans-serif">Modern (Inter)</option>
+                            <option value="'Playfair Display', serif">Luxury (Serif)</option>
+                            <option value="'Roboto Mono', monospace">Tech (Monospace)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">Visual Effect</label>
+                        <select id="effectPicker" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-2 py-2 text-sm text-white focus:outline-none">
+                            <option value="none">Normal</option>
+                            <option value="scanline">Scanlines</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">BGM Music</label>
+                        <select id="musicPicker" class="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-2 py-2 text-sm text-white focus:outline-none">
+                            <option value="none">Mute</option>
+                            <option value="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3">Cyberpunk</option>
+                            <option value="https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3">Ambient</option>
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== RIGHT PANEL: GRAPHICS ==================== -->
+        <div class="lg:col-span-8 flex justify-center items-start pt-2">
+            <div id="exportArea" class="w-full max-w-[550px] transition-all duration-300 relative">
+                
+                <!-- Weather Overlay Layer -->
+                <div id="weatherOverlay"></div>
+
+                <!-- CARD 1: TECH CYBER -->
+                <div id="card1" class="design-card perspective-1000 w-full">
+                    <div class="canvas-container aspect-square tilt-card relative w-full rounded-2xl p-px bg-gradient-to-br from-slate-700/80 via-slate-800/80 to-slate-900/80 shadow-2xl overflow-hidden border border-slate-700">
+                        <div class="effect-container relative w-full h-full bg-slate-950/60 backdrop-blur-md flex flex-col justify-between z-10 tilt-content p-8">
+                            <div class="absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[60px] dyn-bg opacity-30"></div>
+                            
+                            <!-- Draggable Logo -->
+                            <img id="logoPreview1" src="" class="draggable-logo hidden w-20 h-20 object-contain rounded-full border border-slate-600 bg-white/10 shadow-lg" style="top: 20px; left: 20px;" alt="Logo">
+
+                            <div class="flex justify-between items-center z-20">
+                                <span class="brand-text text-white font-black text-xl tracking-widest uppercase ml-auto" contenteditable="true">RTM Solar</span>
+                            </div>
+
+                            <div class="my-auto relative flex justify-center items-center z-20 flex-grow">
+                                <div class="absolute w-40 h-40 border border-slate-600 rounded-full animate-[spin_10s_linear_infinite]"></div>
+                                <div class="w-24 h-24 bg-gradient-to-tr from-slate-800/80 to-slate-900/80 rounded-xl rotate-45 animate-float shadow-2xl border dyn-border grid grid-cols-2 gap-1 p-1">
+                                    <div class="rounded-sm dyn-bg opacity-70"></div><div class="rounded-sm dyn-bg opacity-70"></div>
+                                    <div class="rounded-sm dyn-bg opacity-70"></div><div class="rounded-sm dyn-bg opacity-70"></div>
+                                </div>
+                            </div>
+
+                            <div class="z-20 text-center">
+                                <p class="discount-text text-sm font-bold dyn-text mb-1" contenteditable="true">15% OFF</p>
+                                <h4 class="product-text text-3xl font-black text-white leading-tight mb-2" contenteditable="true">Smart Solar Panels</h4>
+                                <p class="desc-text text-sm text-slate-300 mb-4" contenteditable="true">နောက်ဆုံးပေါ် နည်းပညာသုံး ဆိုလာစနစ်ဖြင့် သင့်အိမ်ကို အဆင့်မြှင့်လိုက်ပါ။</p>
+                                <div class="border-t border-slate-700 pt-3">
+                                    <span class="phone-text text-sm font-bold dyn-text tracking-wider" contenteditable="true">Viber: 09-880931296</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD 2: GOLD LUXURY -->
+                <div id="card2" class="design-card perspective-1000 w-full hidden">
+                    <div class="canvas-container aspect-square tilt-card relative w-full rounded-2xl bg-[#0a0a0a]/70 backdrop-blur-md shadow-2xl border border-[#2a2a2a] overflow-hidden">
+                        <div class="effect-container relative w-full h-full p-8 flex flex-col justify-between z-10 tilt-content text-center">
+                            
+                            <!-- Draggable Logo -->
+                            <img id="logoPreview2" src="" class="draggable-logo hidden w-24 h-24 object-contain drop-shadow-xl" style="top: 20px; left: 50%; transform: translateX(-50%);" alt="Logo">
+
+                            <div class="flex justify-center border-b border-amber-900/50 pb-4 mt-24">
+                                <span class="brand-text text-amber-500 font-serif font-bold text-2xl tracking-[0.2em] uppercase" contenteditable="true">RTM Solar</span>
+                            </div>
+
+                            <div class="my-auto space-y-4">
+                                <p class="desc-text text-slate-300 text-xs tracking-widest max-w-[80%] mx-auto" contenteditable="true">အကောင်းဆုံး အရည်အသွေးကို ရယူလိုက်ပါ။</p>
+                                <h4 class="product-text text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-amber-600 drop-shadow-lg" contenteditable="true">Smart Solar Panels</h4>
+                                <h2 class="discount-text text-7xl font-black text-amber-500 drop-shadow-2xl" contenteditable="true">15%</h2>
+                            </div>
+
+                            <div class="bg-amber-950/40 p-4 rounded-xl border border-amber-900/30">
+                                <span class="phone-text text-amber-400 font-bold tracking-widest" contenteditable="true">Viber: 09-880931296</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD 3: ECO SYSTEM -->
+                <div id="card3" class="design-card perspective-1000 w-full hidden">
+                    <div class="canvas-container aspect-square tilt-card relative w-full rounded-2xl bg-white/80 backdrop-blur-md shadow-2xl border border-slate-200 overflow-hidden text-slate-800">
+                        <div class="effect-container relative w-full h-full p-8 flex flex-col z-10 tilt-content">
+                            
+                            <!-- Draggable Logo -->
+                            <img id="logoPreview3" src="" class="draggable-logo hidden w-20 h-20 object-contain" style="top: 20px; right: 20px;" alt="Logo">
+
+                            <div class="mb-8 border-b border-slate-300 pb-4">
+                                <span class="brand-text font-bold text-xl uppercase tracking-widest dyn-text" contenteditable="true">RTM Solar</span>
+                            </div>
+
+                            <div class="flex-grow flex flex-col justify-center px-4">
+                                <span class="discount-text text-lg font-bold text-emerald-600 mb-2" contenteditable="true">15% OFF Promotion</span>
+                                <h4 class="product-text text-4xl font-black mb-4 text-slate-900" contenteditable="true">Smart Solar Panels</h4>
+                                <p class="desc-text text-slate-700 leading-relaxed font-medium" contenteditable="true">၁၀၀% သန့်စင်သော စွမ်းအင်။ သဘာဝပတ်ဝန်းကျင်ကို ထိန်းသိမ်းပြီး လျှပ်စစ်မီတာခကို အထိရောက်ဆုံး လျှော့ချပါ။</p>
+                            </div>
+
+                            <div class="mt-8 pt-4 border-t border-slate-300 bg-slate-100/80 p-4 rounded-xl text-center">
+                                <span class="phone-text text-slate-800 font-black text-lg tracking-wider" contenteditable="true">Viber: 09-880931296</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ================= 1. LIVE TEXT EDITING =================
+        const inputs = {
+            brand: document.getElementById('brandInput'),
+            product: document.getElementById('productInput'),
+            discount: document.getElementById('discountInput'),
+            phone: document.getElementById('phoneInput')
+        };
+
+        function syncTexts() {
+            document.querySelectorAll('.brand-text').forEach(el => el.innerText = inputs.brand.value);
+            document.querySelectorAll('.product-text').forEach(el => el.innerText = inputs.product.value);
+            document.querySelectorAll('.discount-text').forEach(el => el.innerText = inputs.discount.value);
+            document.querySelectorAll('.phone-text').forEach(el => el.innerText = inputs.phone.value);
+        }
+        
+        Object.values(inputs).forEach(input => input.addEventListener('input', syncTexts));
+
+        // ================= 2. LOGO UPLOAD & CLEAR & DRAG =================
+        const logoUpload = document.getElementById('logoUpload');
+        const clearLogoBtn = document.getElementById('clearLogoBtn');
+        
+        logoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    for(let i=1; i<=3; i++) {
+                        const img = document.getElementById('logoPreview'+i);
+                        img.src = event.target.result;
+                        img.classList.remove('hidden');
+                    }
+                    clearLogoBtn.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function clearLogo() {
+            logoUpload.value = '';
+            for(let i=1; i<=3; i++) {
+                const img = document.getElementById('logoPreview'+i);
+                img.src = '';
+                img.classList.add('hidden');
+            }
+            clearLogoBtn.classList.add('hidden');
+        }
+
+        let activeDragElement = null;
+        let startX, startY, initialX, initialY;
+
+        document.querySelectorAll('.draggable-logo').forEach(logo => {
+            logo.addEventListener('mousedown', dragStart);
+            // Touch support for mobile
+            logo.addEventListener('touchstart', dragStart, {passive: false});
+            logo.ondragstart = function() { return false; }; 
+        });
+
+        function dragStart(e) {
+            activeDragElement = e.target;
+            const event = e.type === 'touchstart' ? e.touches[0] : e;
+            startX = event.clientX;
+            startY = event.clientY;
+            initialX = activeDragElement.offsetLeft;
+            initialY = activeDragElement.offsetTop;
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchmove', drag, {passive: false});
+            document.addEventListener('touchend', dragEnd);
+        }
+
+        function drag(e) {
+            if (!activeDragElement) return;
+            e.preventDefault();
+            const event = e.type === 'touchmove' ? e.touches[0] : e;
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            activeDragElement.style.left = (initialX + dx) + 'px';
+            activeDragElement.style.top = (initialY + dy) + 'px';
+            activeDragElement.style.transform = 'none'; 
+        }
+
+        function dragEnd() {
+            activeDragElement = null;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('touchend', dragEnd);
+        }
+
+        // ================= 3. STYLING CONTROLS =================
+        document.getElementById('sizePicker').addEventListener('change', (e) => {
+            document.querySelectorAll('.canvas-container').forEach(c => {
+                c.classList.remove('aspect-square', 'aspect-[9/16]', 'aspect-video');
+                c.classList.add(e.target.value);
+            });
+        });
+
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            document.documentElement.style.setProperty('--dynamic-color', e.target.value);
+        });
+
+        document.getElementById('designPicker').addEventListener('change', (e) => {
+            document.querySelectorAll('.design-card').forEach(card => {
+                card.classList.toggle('hidden', card.id !== e.target.value);
+            });
+        });
+
+        document.getElementById('fontPicker').addEventListener('change', (e) => {
+            document.documentElement.style.setProperty('--font-family', e.target.value);
+        });
+
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            if(document.body.classList.contains('light-mode')){
+                themeToggle.innerText = '🌙 Dark Mode';
+                themeToggle.className = "bg-slate-900 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition";
+            } else {
+                themeToggle.innerText = '☀️ Light Mode';
+                themeToggle.className = "bg-white text-slate-900 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition";
+            }
+        });
+
+        document.getElementById('effectPicker').addEventListener('change', (e) => {
+            document.querySelectorAll('.effect-container').forEach(el => el.classList.remove('effect-scanline'));
+            if(e.target.value === 'scanline') {
+                document.querySelectorAll('.effect-container').forEach(el => el.classList.add('effect-scanline'));
+            }
+        });
+
+        // ================= 4. CUSTOM VIDEO UPLOAD & AUDIO CONTROLS =================
+        const bgVideo = document.getElementById('bgVideo');
+        const videoUpload = document.getElementById('videoUpload');
+        const clearVideoBtn = document.getElementById('clearVideoBtn');
+        const volumeControl = document.getElementById('volumeControl');
+        let customVideoUrl = null;
+
+        // Video Upload handler
+        videoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (customVideoUrl) URL.revokeObjectURL(customVideoUrl);
+                customVideoUrl = URL.createObjectURL(file);
+                
+                bgVideo.src = customVideoUrl;
+                bgVideo.style.display = 'block';
+                bgVideo.muted = false; // Enable sound for custom video
+                bgVideo.volume = volumeControl.value; // sync with slider
+                bgVideo.play();
+                
+                clearVideoBtn.classList.remove('hidden');
+                
+                // Mute normal BGM if a video is playing to prevent sound clash
+                audioBGM.pause();
+                document.getElementById('musicPicker').value = 'none';
+            }
+        });
+
+        // Volume control for both Video and BGM
+        volumeControl.addEventListener('input', (e) => {
+            const vol = e.target.value;
+            bgVideo.volume = vol;
+            audioBGM.volume = vol;
+            document.getElementById('audioRain').volume = vol;
+            document.getElementById('audioSnow').volume = vol;
+        });
+
+        function clearVideo() {
+            videoUpload.value = '';
+            if (customVideoUrl) {
+                URL.revokeObjectURL(customVideoUrl);
+                customVideoUrl = null;
+            }
+            bgVideo.src = '';
+            bgVideo.style.display = 'none';
+            clearVideoBtn.classList.add('hidden');
+        }
+
+        // BGM Music Picker
+        const audioBGM = document.getElementById('audioBGM');
+        document.getElementById('musicPicker').addEventListener('change', (e) => {
+            if(e.target.value === 'none') {
+                audioBGM.pause(); audioBGM.src = '';
+            } else {
+                audioBGM.src = e.target.value; 
+                audioBGM.volume = volumeControl.value;
+                audioBGM.play().catch(err => console.log("Click page first to play audio"));
+                
+                // Mute video if external music is chosen
+                bgVideo.muted = true;
+            }
+        });
+
+        function setWeather(type) {
+            const overlay = document.getElementById('weatherOverlay');
+            const audios = { rain: document.getElementById('audioRain'), snow: document.getElementById('audioSnow') };
+
+            Object.values(audios).forEach(a => { a.pause(); a.currentTime = 0; });
+            overlay.className = '';
+
+            if (type !== 'none') {
+                overlay.classList.add(`weather-${type}`);
+                audios[type].volume = volumeControl.value;
+                audios[type].play().catch(e => console.log("Audio autoplay blocked."));
+            }
+        }
+
+        // ================= 5. AI TEXT GENERATOR =================
+        const aiPrompts = [
+            "လျှပ်စစ်မီးပျက်လို့ စိတ်ညစ်နေပြီလား? အခုပဲ အလင်းရောင်ကို ပိုင်ဆိုင်လိုက်ပါ။",
+            "သဘာဝပတ်ဝန်းကျင်ကို ထိန်းသိမ်းရင်း လျှပ်စစ်မီတာခကို ထက်ဝက်ချွေတာလိုက်ပါ။",
+            "တစ်ခါတပ်ဆင်ရုံဖြင့် နှစ်ပေါင်းများစွာ စိတ်ချယုံကြည်ရသော 100% Green Energy.",
+            "မီးစက်ဆီဖိုးတွေ သက်သာဖို့ အကောင်းဆုံး ရင်းနှီးမြှုပ်နှံမှု - အာမခံအပြည့်အဝပါဝင်သည်။"
+        ];
+        function generateAIText() {
+            const randomPrompt = aiPrompts[Math.floor(Math.random() * aiPrompts.length)];
+            document.querySelectorAll('.desc-text').forEach(el => {
+                el.innerText = randomPrompt;
+                el.style.color = 'var(--dynamic-color)';
+                setTimeout(() => el.style.color = '', 600);
+            });
+        }
+
+        // ================= 6. DOWNLOAD (html2canvas) =================
+        function downloadDesign() {
+            const activeCard = Array.from(document.querySelectorAll('.design-card')).find(card => !card.classList.contains('hidden'));
+            const canvasContainer = activeCard.querySelector('.canvas-container');
+            
+            const originalTransform = canvasContainer.style.transform;
+            canvasContainer.style.transform = 'none';
+
+            html2canvas(canvasContainer, { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
+                canvasContainer.style.transform = originalTransform;
+                const link = document.createElement('a');
+                link.download = 'RTM_Design_Pro.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                alert("Download အဆင်မပြေပါ။ Browser Error ဖြစ်နိုင်ပါသည်။");
+                canvasContainer.style.transform = originalTransform;
+            });
+        }
+
+        // ================= 7. 3D HOVER TILT =================
+        document.querySelectorAll('.tilt-card').forEach(card => {
+            card.addEventListener('mousemove', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                this.style.transform = `perspective(1000px) rotateX(${-(y/25)}deg) rotateY(${x/25}deg) scale3d(1.02, 1.02, 1.02)`;
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)`;
+            });
+        });
+    </script>
+</body>
+</html>
