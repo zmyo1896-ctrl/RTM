@@ -1,0 +1,10 @@
+from pathlib import Path
+p = Path('/home/ubuntu/RTM/index.html')
+s = p.read_text()
+s = s.replace('ViMax orchestration + Gemini Veo render pipeline ဖြင့် ထုတ်ထားသော demo။ ဒီ panel က generated MP4 ကို preview နှင့် download လုပ်နိုင်ရန် ထည့်ထားခြင်းဖြစ်သည်။', 'ViMax integration panel။ ဒီ playable demo က Gemini free-tier quota မရသေးချိန်အတွက် local cinematic fallback ဖြစ်ပြီး Veo quota ပြန်ရလျှင် official render ကို အလိုအလျောက် အစားထိုးနိုင်သည်။')
+s = s.replace('ViMax Connected</span>', 'ViMax Connected · Local Fallback</span>')
+s = s.replace('“Cinematic documentary shot of a small solar-powered community workshop at sunrise…”', 'Local cinematic solar-workshop demo; Veo prompt is preserved in vimax_demo.py for the next quota-enabled render.')
+s = s.replace('<p class="text-sm font-bold text-cyan-300 mt-1">Veo 3.1</p>', '<p class="text-sm font-bold text-cyan-300 mt-1">Local MP4</p>')
+s = s.replace('မှတ်ချက် — video generation ကို ViMax ရဲ့ official provider adapter နဲ့ server-side ပြုလုပ်ထားပြီး ဒီ UI က final artifact ကို local preview/download ပေးသည်။', 'မှတ်ချက် — Gemini quota မရသေးသောကြောင့် ယခု MP4 သည် local fallback ဖြစ်သည်။ official ViMax Veo adapter နှင့် source runner ကို vimax_demo.py ထဲတွင် သိမ်းထားသည်။')
+p.write_text(s)
+print('updated fallback labels')
